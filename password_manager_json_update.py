@@ -12,6 +12,7 @@ BUTTON_COLOR = "#c1d8c3"
 
 
 # ----------------- PASSWORD GENERATOR ---------------------
+
 def generate_password():
     letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u',
                'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
@@ -37,11 +38,13 @@ def generate_password():
     for char in password_list:
         password += char
 
-    password_entry.insert(END, password)
+    password_entry.delete(0, END)  # clears the existing content in the password_entry field
+    password_entry.insert(END, password)  # After clearing the entry field, this line inserts new password into it
     pyperclip.copy(password)
 
 
 # ------------------- SAVE PASSWORD --------------------
+
 def save_password():
     website = website_entry.get()
     email = email_entry.get()
@@ -55,46 +58,52 @@ def save_password():
         }
     }
 
-    retry = messagebox.askretrycancel(title="information", message="Before saving password use search button to "
-                                                                   "confirm that website does not already exist in "
-                                                                   "data file, otherwise data will be overwritten on "
-                                                                   "that website.")
+    if not website or not email or not password or email == "yourmail@gmail.com":
+        messagebox.showerror(title="OOPS", message="Please do not leave any field empty.")
+    else:
+        is_ok = messagebox.askokcancel(title=website, message=f"These are the details entered:" + "\n" +
+                                                              f"\nEmail: {email}" + f"\nPassword:  {password}" + "\n" +
+                                                              "\nIs is ok to save?")
+        if is_ok:
+            try:
+                # open json file in read mode and update data with new data
+                with open("data.json", "r") as data_file:
+                    data = json.load(data_file)
 
-    if not retry:   # retry returns true if retry button is clicked
-        if not website or not email or not password:
-            messagebox.showerror(title="OOPS", message="Please don't leave any field empty.")
-        else:
-            is_ok = messagebox.askokcancel(title=website, message=f"These are the details entered:" + "\n" +
-                                                                  f"\nEmail: {email}" + f"\nPassword:  {password}" + "\n" +
-                                                                  "\nIs is ok to save?")
-            if is_ok:
-                try:
-                    # open json file in read mode and update data with new data
-                    with open("data.json", "r") as data_file:
-                        data = json.load(data_file)  # read json data
+            except (FileNotFoundError, json.decoder.JSONDecodeError):
+                # open json file in write mode and add updated data
+                with open("data.json", "w") as data_file:
+                    json.dump(new_data, data_file, indent=4)
 
-                except FileNotFoundError:
-                    # open json file in write mode and add updated data
-                    with open("data.json", "w") as data_file:
-                        json.dump(new_data, data_file, indent=4)
-
-                except json.decoder.JSONDecodeError:
-                    with open("data.json", "w") as data_file:
-                        json.dump(new_data, data_file, indent=4)
-
+            else:
+                if website in data:
+                    is_yes = messagebox.askyesno(title=f"⚠️{website}",
+                                                 message=f"website '{website}' already exist in data.\n\n"
+                                                         f"Details:\nemail: {data[website]['email']}\npassword: {data[website]['password']}\n\n"
+                                                         f"Do you want to overwrite the data?")
+                    if is_yes:
+                        # update json data
+                        data.update(new_data)
+                        # write updated data
+                        with open("data.json", "w") as data_file:
+                            json.dump(data, data_file, indent=4)
                 else:
                     # update json data
                     data.update(new_data)
                     # write updated data
                     with open("data.json", "w") as data_file:
                         json.dump(data, data_file, indent=4)
-
-                finally:
-                    website_entry.delete(0, END)
-                    password_entry.delete(0, END)
+            finally:
+                website_entry.delete(0, END)
+                password_entry.delete(0, END)
+                email_entry.delete(0, END)
+                website_entry.focus()  # place cursor on this entry label
+                email_entry.insert(0, "yourmail@gmail.com")
+                email_entry.config(fg="gray")
 
 
 # --------------------- search from data --------------------
+
 def search_data():
     try:
         with open("data.json", "r") as data_file:
@@ -112,11 +121,30 @@ def search_data():
     else:
         messagebox.showinfo(title=website_name, message=f"website data found\n\nemail:  {website_search['email']}"
                                                         f"\npassword:  {website_search['password']}")
-        if website_name in search:      # membership operator in dict search for keys
-            is_yes = messagebox.askyesno(title=f"⚠️{website_name}", message=f"website '{website_name}' already exist in data. Do you want to overwrite the data?")
+        if website_name in search:
+            is_yes = messagebox.askyesno(title=f"⚠️{website_name}",
+                                         message=f"website '{website_name}' already exist in data. Do you want to overwrite the data?")
             if not is_yes:
                 website_entry.delete(0, END)
                 password_entry.delete(0, END)
+                email_entry.delete(0, END)
+                website_entry.focus()  # place cursor on this entry label
+                email_entry.insert(0, "yourmail@gmail.com")
+                email_entry.config(fg="gray")
+
+
+# ------------------- working with placeholder --------------------
+
+def on_focus_in(event):
+    if email_entry.get() == "yourmail@gmail.com":
+        email_entry.delete(0, END)
+        email_entry.config(fg="black")  # Change text color when user types
+
+
+def on_focus_out(event):
+    if not email_entry.get():  # If the entry is empty, restore placeholder
+        email_entry.insert(0, "yourmail@gmail.com")
+        email_entry.config(fg="gray")  # Make placeholder text gray
 
 
 # -------------------- UI SETUP --------------------
@@ -146,15 +174,18 @@ website_entry = Entry(width=34, font=FONT)
 website_entry.focus()
 website_entry.grid(row=1, column=1, columnspan=2, sticky="w")
 
-email_entry = Entry(width=50, font=FONT)
-email_entry.insert(END, "yourmail@gmail.com")
+email_entry = Entry(width=50, font=FONT, fg="gray")
+email_entry.insert(0, "yourmail@gmail.com")  # insert a placeholder
+email_entry.bind("<FocusIn>", on_focus_in)
+email_entry.bind("<FocusOut>", on_focus_out)
 email_entry.grid(row=2, column=1, columnspan=2)
 
 password_entry = Entry(width=34, font=FONT)
 password_entry.grid(row=3, column=1, sticky="w")
 
 # buttons
-password_generate_button = Button(text="generate password", bg=BUTTON_COLOR, font=("times new roman", 13,), command=generate_password)
+password_generate_button = Button(text="generate password", bg=BUTTON_COLOR, font=("times new roman", 13,),
+                                  command=generate_password)
 password_generate_button.grid(row=3, column=2)
 
 add_button = Button(text="add", width=50, bg=BUTTON_COLOR, font=("times new roman", 13,), command=save_password)

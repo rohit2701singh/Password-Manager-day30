@@ -34,7 +34,8 @@ def generate_password():
     for char in password_list:
         password += char
 
-    password_entry.insert(END, password)
+    password_entry.delete(0, END)  # clears the existing content in the password_entry field
+    password_entry.insert(END, password)  # After clearing the entry field, this line inserts new password into it
     pyperclip.copy(password)
     # print(f"Your password is: {password}")
 
@@ -45,7 +46,7 @@ def save_password():
     email = email_entry.get()
     password = password_entry.get()
 
-    if not website or not password or not email:    # if any field empty
+    if not website or not password or not email or email == "yourmail@gmail.com":  # if any field empty
         messagebox.showerror(title="OOPS", message="Please don't leave any field empty.")
     else:
         is_ok = messagebox.askokcancel(title=website, message=f"These are the details entered:\n\nEmail: {email}"
@@ -53,8 +54,27 @@ def save_password():
         if is_ok:
             with open("data.txt", "a") as data:
                 data.write(f"website: {website} | email: {email} | password: {password}\n")
+
             website_entry.delete(0, END)
             password_entry.delete(0, END)
+            email_entry.delete(0, END)
+            website_entry.focus()   # place cursor on this entry label
+            email_entry.insert(0, "yourmail@gmail.com")
+            email_entry.config(fg="gray")
+
+
+# ------------------- working with placeholder --------------------
+
+def on_focus_in(event):
+    if email_entry.get() == "yourmail@gmail.com":
+        email_entry.delete(0, END)
+        email_entry.config(fg="black")  # Change text color when user types
+
+
+def on_focus_out(event):
+    if not email_entry.get():  # If the entry is empty, restore placeholder
+        email_entry.insert(0, "yourmail@gmail.com")
+        email_entry.config(fg="gray")  # Make placeholder text gray
 
 
 # ----------------------- UI SETUP ------------------------
@@ -83,15 +103,18 @@ website_entry = Entry(width=50, font=FONT)
 website_entry.focus()
 website_entry.grid(row=1, column=1, columnspan=2, )
 
-email_entry = Entry(width=50, font=FONT)
-email_entry.insert(END, "yourmail@gmail.com")   # set a default mail
+email_entry = Entry(width=50, font=FONT, fg="gray")
+email_entry.insert(0, "yourmail@gmail.com")  # insert a placeholder
+email_entry.bind("<FocusIn>", on_focus_in)
+email_entry.bind("<FocusOut>", on_focus_out)
 email_entry.grid(row=2, column=1, columnspan=2)
 
 password_entry = Entry(width=34, font=FONT)
 password_entry.grid(row=3, column=1, sticky="w")
 
 # ---------- buttons -----------
-password_generate_button = Button(text="generate password", bg="#a1ccd1", font=("times new roman", 13,), command=generate_password)
+password_generate_button = Button(text="generate password", bg="#a1ccd1", font=("times new roman", 13,),
+                                  command=generate_password)
 password_generate_button.grid(row=3, column=2)
 
 add_button = Button(text="add", width=50, bg="#a1ccd1", font=("times new roman", 13,), command=save_password)
